@@ -26,15 +26,22 @@ LCD_LINE2=0xC0
 E_PULSE=0.0000
 E_DELAY=0.0000
 
+# Option flag defaults
 doClear=1
+setPower=2
+lineNum=1
 
 usage() {
 	echo "
-	LCD_Driver\n
-	Usage:		./LCD_Driver.sh [-p ( 1 | 0 )] [-c ( 1 | 0 )] [TEXT]
+	LCD_Driver
+	Usage:		./LCD_Driver.sh [-p ( 1 | 0 )] [-c ( 1 | 0 )] [-l ( 1 | 2 )] [-t TEXT]
 	
 	-p [VALUE]		Turn the LCD Backlight on (1) or off (0). If not specified, no changes are made to the current state of the LCD Backlight pin.
 	-c [VALUE]		If VALUE is 0, do not clear the display. If VALUE is 1, clear the display. Default is 1 (default is clear the display).
+	-t [TEXT]		Will print the specified text (note: it is recommended that you double quote your string) to the display.
+	-l [VALUE]		Select the line that the text will be printed to. Default is line 1;
+	
+	If the -t option is not used, input from stdin will be printed to the LCD display.
 	
 	Author: ExpandingDev
 	Issues, bugs, suggestions: https://github.com/ExpandingDev/Bash1602Driver
@@ -123,15 +130,23 @@ writeString() {
 }
 
 initPins
-setPower=2
-while getopts "p:c" o; do
+
+while getopts "p:c:t:l:" o; do
 	case "${o}" in
 		p)
 			setPower=${OPTARG}
 			((setPower == 0 || setPower == 1)) || usage
 			;;
 		c)
-			doClear=1
+			doClear=${OPTARG}
+			((doClear == 0 || doClear == 1)) || usage
+			;;
+		t)
+			text="${OPTARG}"
+			;;
+		l)
+			lineNum=${OPTARG}
+			((doClear == 1 || doClear == 2)) || usage
 			;;
 		*)
 			usage
@@ -147,9 +162,23 @@ fi
 
 if [ $setPower -eq 2 ]; then
 	#Do nothing as the user hasn't specified the flag
+	echo ""
 else
 	gpio -g write $LCD_BACKLIGHT $setPower
 fi
 
-writeByte $LCD_LINE2 $LCD_CMD
-writeString "$1"
+# Select output line
+if [ $lineNum -eq 1 ]; then
+	writeByte $LCD_LINE1 $LCD_CMD
+else
+	writeByte $LCD_LINE2 $LCD_CMD
+fi
+
+if [ -z ${text+x} ]; then
+	while read -e text
+	do
+		writeString "${text}"
+	done < /dev/stdin
+else
+	writeString "${text}"
+fi
