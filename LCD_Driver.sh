@@ -129,8 +129,6 @@ writeString() {
 	done
 }
 
-initPins
-
 while getopts "p:c:t:l:" o; do
 	case "${o}" in
 		p)
@@ -154,6 +152,7 @@ while getopts "p:c:t:l:" o; do
 	esac
 done
 
+initPins
 resetLCD
 
 if [ $doClear -eq 1 ]; then
